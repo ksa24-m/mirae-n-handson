@@ -27,6 +27,36 @@ server.registerTool(
 // - 감쌀 API 는 ./itemApi.js 에 있다 (ESM 이라 확장자를 .js 로 적는다)
 // - import 문도 이 자리에 함께 붙여 넣어도 된다
 // ================================================================
+import * as z from 'zod/v4';
+import { searchItems } from './itemApi.js';
+
+server.registerTool(
+  'search_items',
+  {
+    description:
+      '문항 은행에서 초등 수학 문항을 찾을 때 쓴다. 키워드(문항 본문 · 태그)로 검색하고 단원 · 난이도로 좁힐 수 있다. ' +
+      '"분수 덧셈 문항 찾아 줘", "M6-2 단원 상 난이도 문장제", "오답률높음 태그 문항" 처럼 문항을 조회 · 추천해야 할 때 호출한다. ' +
+      '읽기 전용이며 문항을 등록 · 수정하지 않는다.',
+    inputSchema: z.object({
+      keyword: z.string().describe('검색어. 문항 본문(stem)이나 태그에 포함되면 일치한다. 예: "분수", "문장제"'),
+      unit: z
+        .string()
+        .optional()
+        .describe('단원 코드(예: "M5-1") 또는 단원 이름 일부(예: "분수의 곱셈"). 생략하면 모든 단원'),
+      difficulty: z.enum(['하', '중', '상']).optional().describe('난이도. "하" · "중" · "상" 중 하나. 생략하면 모든 난이도'),
+      limit: z.number().int().min(1).max(20).default(5).describe('최대 결과 건수(1~20, 기본 5)')
+    })
+  },
+  async ({ keyword, unit, difficulty, limit }) => {
+    const conditions = { keyword, unit, difficulty, limit };
+    const items = await searchItems(conditions);
+    console.error(`search_items: ${JSON.stringify(conditions)} → ${items.length}건`);
+    const result = items.length === 0 ? { message: '검색 결과 없음', conditions } : { count: items.length, items };
+    return {
+      content: [{ type: 'text', text: JSON.stringify(result) }]
+    };
+  }
+);
 
 async function main() {
   const transport = new StdioServerTransport();
