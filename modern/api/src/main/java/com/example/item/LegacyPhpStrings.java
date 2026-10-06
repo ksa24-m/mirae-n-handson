@@ -64,7 +64,7 @@ final class LegacyPhpStrings {
     /**
      * PHP 7.4 {@code (int)$value}.
      * 앞 공백을 건너뛰고 숫자로 읽을 수 있는 앞부분만 쓴다({@code "3abc"} → 3, {@code "abc"} → 0).
-     * 소수 · 지수는 실수로 읽어 0 쪽으로 버리고({@code "3.5"} → 3, {@code "1e1"} → 10), long 범위를 넘으면 끝값에 붙인다.
+     * 소수 · 지수는 실수로 읽어 0 쪽으로 버리고({@code "3.5"} → 3, {@code "1e1"} → 10), long 범위를 넘으면 끝값에 붙이고 무한대가 되면 0 이다({@code "1e999"} → 0).
      */
     static long toInt(String value) {
         int start = 0;
@@ -81,8 +81,13 @@ final class LegacyPhpStrings {
         if (integerOnly && digits.length() <= SAFE_LONG_DIGITS) {
             return Long.parseLong(number);
         }
-        // Java 의 double → long 변환은 0 쪽으로 버리고 범위를 넘으면 끝값에 붙는다(PHP zend_dval_to_lval_cap 와 같음)
-        return (long) Double.parseDouble(number);
+        double parsed = Double.parseDouble(number);
+        // PHP zend_dval_to_lval_cap 은 무한대이면 0 이다("1e999" → 0). Java 의 (long) 은 끝값에 붙으므로 따로 거른다
+        if (Double.isInfinite(parsed)) {
+            return 0L;
+        }
+        // 유한한 값은 Java 의 double → long 변환과 같다: 0 쪽으로 버리고 범위를 넘으면 끝값에 붙는다
+        return (long) parsed;
     }
 
     /** 정수 변환 값을 int 로 좁힌다. 범위 밖이면 끝값 — 어느 쪽이든 TINYINT 난이도와는 같을 수 없다. */

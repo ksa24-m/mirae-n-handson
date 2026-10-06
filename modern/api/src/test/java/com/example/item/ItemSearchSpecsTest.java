@@ -89,6 +89,16 @@ class ItemSearchSpecsTest {
     }
 
     @Test
+    @DisplayName("matching: 키워드의 % 는 와일드카드이고 \\ 는 이스케이프 문자로 동작한다")
+    void percentIsWildcardAndBackslashEscapes() {
+        assertThat(titles("q", "%")).hasSize(3);
+        assertThat(titles("q", "분%덧셈")).containsExactly("분모가 같은 분수의 덧셈");
+        // \% 는 글자 % 와 비교하므로 % 가 들어간 문항이 없으면 0건
+        assertThat(titles("q", "\\%")).isEmpty();
+        assertThat(titles("q", "\\_")).isEmpty();
+    }
+
+    @Test
     @DisplayName("matching: 단원 · 난이도 · 태그는 AND 로 결합한다")
     void conditionsAreAnded() {
         assertThat(titles("unit", "M5-1", "level", "1")).containsExactly("분모가 같은 분수의 덧셈");
